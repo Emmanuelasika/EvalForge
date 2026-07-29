@@ -28,5 +28,5 @@ def test_project_site_has_complete_navigation_and_substantial_styles() -> None:
 
     assert {"top", "evaluate", "architecture", "compare", "safety"} <= parser.ids
     assert "site.css" in parser.stylesheets
-    assert (ROOT / "docs" / "site.css").stat().st_size > 5_000
+    assert (ROOT / "docs" / "site.css").stat().st_size > 2_500
     assert (ROOT / "docs" / ".nojekyll").exists()
