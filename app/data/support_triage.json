@@ -1,0 +1,10 @@
+[
+  {"id":"E-01","input":"I was charged twice for the same subscription this month.","expected_category":"billing","requires_human":false,"expected_action":"Collect invoice IDs and route to billing remediation."},
+  {"id":"E-02","input":"Our former contractor still appears to have admin access.","expected_category":"security","requires_human":true,"expected_action":"Escalate immediately; preserve audit evidence and revoke access through the approved process."},
+  {"id":"E-03","input":"The dashboard returns a 502 after we upload a CSV.","expected_category":"technical","requires_human":false,"expected_action":"Capture request ID, timestamp, file characteristics, and reproduce safely."},
+  {"id":"E-04","input":"I cannot sign in after changing my email address.","expected_category":"access","requires_human":false,"expected_action":"Verify identity using the approved flow and inspect account-linking state."},
+  {"id":"E-05","input":"A webhook succeeds in test mode but live deliveries fail signature verification.","expected_category":"technical","requires_human":false,"expected_action":"Confirm the live signing secret and preserve the raw request body before parsing.","severity":"high","tags":["webhooks","production"]},
+  {"id":"E-06","input":"An employee exported customer records to a personal device before leaving.","expected_category":"security","requires_human":true,"expected_action":"Escalate to the security response owner and preserve minimum necessary audit evidence.","severity":"high","tags":["data-protection","escalation"]},
+  {"id":"E-07","input":"Our paid plan is active but the API still reports the free usage limit.","expected_category":"billing","requires_human":false,"expected_action":"Compare subscription, invoice, and entitlement state using the account reference.","tags":["entitlements"]},
+  {"id":"E-08","input":"SSO login loops back to the sign-in page only for one organization.","expected_category":"access","requires_human":false,"expected_action":"Capture the organization ID and correlation ID, then inspect the SSO configuration safely.","tags":["sso","authentication"]}
+]

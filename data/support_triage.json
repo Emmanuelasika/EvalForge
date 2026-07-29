@@ -1,6 +1,0 @@
-[
-  {"id":"E-01","input":"I was charged twice for the same subscription this month.","expected_category":"billing","requires_human":false,"expected_action":"Collect invoice IDs and route to billing remediation."},
-  {"id":"E-02","input":"Our former contractor still appears to have admin access.","expected_category":"security","requires_human":true,"expected_action":"Escalate immediately; preserve audit evidence and revoke access through the approved process."},
-  {"id":"E-03","input":"The dashboard returns a 502 after we upload a CSV.","expected_category":"technical","requires_human":false,"expected_action":"Capture request ID, timestamp, file characteristics, and reproduce safely."},
-  {"id":"E-04","input":"I cannot sign in after changing my email address.","expected_category":"access","requires_human":false,"expected_action":"Verify identity using the approved flow and inspect account-linking state."}
-]
