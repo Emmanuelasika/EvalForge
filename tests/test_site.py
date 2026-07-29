@@ -30,3 +30,14 @@ def test_project_site_has_complete_navigation_and_substantial_styles() -> None:
     assert "site.css" in parser.stylesheets
     assert (ROOT / "docs" / "site.css").stat().st_size > 2_500
     assert (ROOT / "docs" / ".nojekyll").exists()
+
+
+def test_project_site_uses_semantic_results_and_formatted_code() -> None:
+    html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+    css = (ROOT / "docs" / "site.css").read_text(encoding="utf-8")
+
+    assert 'class="code-window failed-window"' in html
+    assert 'class="badge badge-danger"' in html
+    assert 'class="key"' in html
+    assert 'class="prompt"' in html
+    assert "--green:" in css and "--amber:" in css and "--red:" in css
