@@ -13,7 +13,7 @@ authors = [{name = "Emmanuel Asika"}]
 dependencies = ["fastapi==0.116.1", "uvicorn[standard]==0.35.0", "pydantic==2.11.7"]
 
 [project.optional-dependencies]
-openai = ["openai==1.99.9"]
+openai = ["openai==2.50.0"]
 dev = ["pytest==8.4.1", "httpx==0.28.1", "ruff==0.9.3"]
 
 [tool.setuptools.packages.find]
