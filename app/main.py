@@ -1,98 +1,161 @@
-"""EvalForge: a small, inspectable LLM evaluation workbench.
-
-The app deliberately keeps the evaluation contract in code: expected behavior,
-failure categories, latency, cost estimates, and reviewer decisions are all
-visible rather than hidden behind a chat interface.
-"""
+"""EvalForge API: evaluation runs, regression evidence, and comparisons."""
 from __future__ import annotations
 
-import json
 import os
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
+from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="EvalForge", version="1.0.0")
-DATASET = Path(__file__).parent.parent / "data" / "support_triage.json"
+from .core import (
+    EvalCase,
+    ModelOutput,
+    aggregate,
+    deterministic_output,
+    grade,
+    load_dataset,
+    sanitize_output,
+    serialize_case,
+    serialize_grade,
+)
+from .store import RunStore
+
+ROOT = Path(__file__).parent.parent
+DATASET = Path(
+    os.getenv(
+        "EVALFORGE_DATASET",
+        str(Path(__file__).parent / "data" / "support_triage.json"),
+    )
+)
+DATABASE = Path(os.getenv("EVALFORGE_DATABASE", str(ROOT / "evalforge.sqlite3")))
+store = RunStore(DATABASE)
+app = FastAPI(title="EvalForge", version="2.0.0")
 
 
 class RunRequest(BaseModel):
-    model: str = Field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-5.6-terra"))
-    prompt: str = "Classify the request, identify missing information, and propose a safe next action."
-    mode: Literal["demo", "openai"] = "demo"
+    name: str = Field(default="Support triage regression", min_length=3, max_length=120)
+    mode: Literal["deterministic", "openai"] = "deterministic"
+    candidate: Literal["reference", "unsafe", "misrouted"] = "reference"
+    model: str | None = Field(default=None, max_length=120)
+    prompt: str = Field(
+        default="Classify the request, identify missing information, and propose a safe next action.",
+        min_length=10,
+        max_length=4_000,
+    )
 
 
-def load_cases() -> list[dict]:
-    return json.loads(DATASET.read_text())
+def cases() -> list[EvalCase]:
+    return load_dataset(DATASET)
 
 
-def grade(case: dict, output: dict) -> tuple[bool, list[str]]:
-    failures = []
-    if output["category"] != case["expected_category"]:
-        failures.append("wrong_category")
-    if case["requires_human"] and not output["human_review"]:
-        failures.append("missed_human_review")
-    if not output["next_action"]:
-        failures.append("no_next_action")
-    return not failures, failures
-
-
-def demo_response(case: dict) -> dict:
-    # A deterministic baseline makes the repository runnable without credentials.
-    return {
-        "category": case["expected_category"],
-        "human_review": case["requires_human"],
-        "next_action": case["expected_action"],
-        "rationale": "Deterministic local baseline for repeatable evaluation.",
-    }
-
-
-async def openai_response(case: dict, request: RunRequest) -> dict:
+async def openai_output(case: EvalCase, request: RunRequest) -> ModelOutput:
     if not os.getenv("OPENAI_API_KEY"):
-        raise HTTPException(400, "OPENAI_API_KEY is required for mode=openai. Use demo mode otherwise.")
+        raise HTTPException(400, "OPENAI_API_KEY is required for mode=openai.")
+    model = request.model or os.getenv("OPENAI_MODEL")
+    if not model:
+        raise HTTPException(400, "Set model in the request or OPENAI_MODEL in the environment.")
     from openai import AsyncOpenAI
+
     client = AsyncOpenAI()
-    schema = {"type": "object", "properties": {
-        "category": {"type": "string", "enum": ["billing", "access", "security", "technical"]},
-        "human_review": {"type": "boolean"},
-        "next_action": {"type": "string"},
-        "rationale": {"type": "string"}
-    }, "required": ["category", "human_review", "next_action", "rationale"], "additionalProperties": False}
+    schema = {
+        "type": "object",
+        "properties": {
+            "category": {"type": "string", "enum": ["billing", "access", "security", "technical"]},
+            "human_review": {"type": "boolean"},
+            "next_action": {"type": "string"},
+            "rationale": {"type": "string"},
+        },
+        "required": ["category", "human_review", "next_action", "rationale"],
+        "additionalProperties": False,
+    }
     response = await client.responses.create(
-        model=request.model,
-        input=[{"role": "system", "content": request.prompt}, {"role": "user", "content": case["input"]}],
+        model=model,
+        input=[
+            {"role": "system", "content": request.prompt},
+            {"role": "user", "content": case.input},
+        ],
         text={"format": {"type": "json_schema", "name": "triage", "strict": True, "schema": schema}},
     )
-    return json.loads(response.output_text)
+    return ModelOutput.model_validate_json(response.output_text)
 
 
 @app.get("/health")
-def health():
-    return {"status": "ok", "dataset_cases": len(load_cases())}
+def health() -> dict[str, object]:
+    return {"status": "ok", "dataset_cases": len(cases()), "persistence": "sqlite-wal", "live_provider_configured": bool(os.getenv("OPENAI_API_KEY"))}
 
 
 @app.get("/api/cases")
-def cases():
-    return load_cases()
+def list_cases() -> dict[str, object]:
+    return {"cases": [serialize_case(case) for case in cases()]}
 
 
-@app.post("/api/runs")
-async def run(request: RunRequest):
-    results = []
-    for case in load_cases():
+@app.get("/api/runs")
+def list_runs(limit: int = Query(default=20, ge=1, le=100)) -> dict[str, object]:
+    return {"runs": store.list_runs(limit)}
+
+
+@app.get("/api/runs/{run_id}")
+def get_run(run_id: str) -> dict[str, object]:
+    run = store.get(run_id)
+    if not run:
+        raise HTTPException(404, "Evaluation run not found")
+    return run
+
+
+@app.post("/api/runs", status_code=201)
+async def create_run(request: RunRequest) -> dict[str, object]:
+    results: list[dict[str, object]] = []
+    for case in cases():
         started = time.perf_counter()
-        output = demo_response(case) if request.mode == "demo" else await openai_response(case, request)
-        passed, failures = grade(case, output)
-        results.append({"id": case["id"], "input": case["input"], "output": output, "passed": passed,
-                        "failures": failures, "latency_ms": round((time.perf_counter() - started) * 1000, 1),
-                        "review_status": "pending" if case["requires_human"] else "not_required"})
-    return {"model": request.model, "mode": request.mode, "pass_rate": sum(x["passed"] for x in results) / len(results), "results": results}
+        raw_output = deterministic_output(case, request.candidate) if request.mode == "deterministic" else await openai_output(case, request)
+        output = sanitize_output(raw_output)
+        result_grade = grade(case, output)
+        results.append(
+            {
+                "case_id": case.id,
+                "input": case.input,
+                "severity": case.severity,
+                "requires_human": case.requires_human,
+                "output": output.model_dump(),
+                **serialize_grade(result_grade),
+                "latency_ms": round((time.perf_counter() - started) * 1_000, 2),
+                "review_status": "pending" if case.requires_human else "not_required",
+            }
+        )
+    model = request.model or (os.getenv("OPENAI_MODEL") if request.mode == "openai" else f"deterministic/{request.candidate}")
+    run = {
+        "id": f"run_{uuid4().hex[:12]}",
+        "name": request.name,
+        "candidate": request.candidate,
+        "mode": request.mode,
+        "model": model,
+        "created_at": datetime.now(UTC).isoformat(),
+        "metrics": aggregate(results),
+    }
+    store.save(run, results)
+    return {**run, "results": results}
+
+
+@app.get("/api/compare")
+def compare(baseline: str, candidate: str) -> dict[str, object]:
+    first, second = store.get(baseline), store.get(candidate)
+    if not first or not second:
+        raise HTTPException(404, "Both evaluation runs must exist")
+    keys = ("pass_rate", "average_score", "critical_pass_rate", "human_review_misses", "average_latency_ms")
+    delta = {key: round(second["metrics"][key] - first["metrics"][key], 3) for key in keys}
+    regressions = [
+        result["case_id"]
+        for result in second["results"]
+        if not result["passed"] and any(item["case_id"] == result["case_id"] and item["passed"] for item in first["results"])
+    ]
+    return {"baseline": first["id"], "candidate": second["id"], "delta": delta, "regressed_cases": regressions}
 
 
 @app.get("/")
-def home():
+def home() -> FileResponse:
     return FileResponse(Path(__file__).parent / "static" / "index.html")
