@@ -1,4 +1,4 @@
-"""Evaluation contracts and deterministic graders for EvalForge."""
+"""Evaluation contracts and deterministic graders for AI support workflows."""
 from __future__ import annotations
 
 import json
