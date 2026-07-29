@@ -32,12 +32,21 @@ def test_project_site_has_complete_navigation_and_substantial_styles() -> None:
     assert (ROOT / "docs" / ".nojekyll").exists()
 
 
-def test_project_site_uses_semantic_results_and_formatted_code() -> None:
+def test_project_site_presents_an_interactive_evaluation_lab() -> None:
     html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
     css = (ROOT / "docs" / "site.css").read_text(encoding="utf-8")
 
-    assert 'class="code-window failed-window"' in html
-    assert 'class="badge badge-danger"' in html
-    assert 'class="key"' in html
-    assert 'class="prompt"' in html
+    assert 'data-candidate="reference"' in html
+    assert 'data-candidate="misrouted"' in html
+    assert 'data-candidate="unsafe"' in html
+    assert "RELEASE GATE BLOCKED" in html
+    assert "evaluation-hero.webp" in html
+    assert "evaluation-texture.webp" in html
     assert "--green:" in css and "--amber:" in css and "--red:" in css
+
+
+def test_project_site_ships_its_original_visual_assets() -> None:
+    assets = ROOT / "docs" / "assets"
+
+    assert (assets / "evaluation-hero.webp").stat().st_size > 40_000
+    assert (assets / "evaluation-texture.webp").stat().st_size > 40_000
