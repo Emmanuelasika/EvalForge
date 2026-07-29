@@ -22,10 +22,10 @@
         <div class="actions"><a class="button" href="#start">Run it locally</a><a href="#example">See a failed evaluation</a></div>
       </div>
       <div class="summary">
-        <p><strong>8</strong><span>support cases</span></p>
-        <p><strong>4</strong><span>independent checks</span></p>
-        <p><strong>3</strong><span>reproducible candidates</span></p>
-        <p><strong>0</strong><span>API keys required</span></p>
+        <p class="info"><strong>8</strong><span>support cases</span></p>
+        <p class="success"><strong>4</strong><span>independent checks</span></p>
+        <p class="warning"><strong>3</strong><span>reproducible candidates</span></p>
+        <p class="safe"><strong>0</strong><span>API keys required</span></p>
       </div>
     </section>
 
@@ -38,10 +38,10 @@
     <section id="use-cases">
       <div class="section-heading"><span>Use cases</span><h2>When this is useful</h2></div>
       <div class="plain-grid">
-        <article><h3>Before changing a prompt</h3><p>Run the old and new prompt against the same cases and inspect the exact regressions.</p></article>
-        <article><h3>Before switching models</h3><p>Keep the evaluation contract fixed while the provider or model changes.</p></article>
-        <article><h3>For safety requirements</h3><p>Turn “never request credentials” and “security needs review” into executable checks.</p></article>
-        <article><h3>Inside CI</h3><p>Use deterministic candidates to verify grader behaviour without credentials or provider costs.</p></article>
+        <article class="use-info"><h3>Before changing a prompt</h3><p>Run the old and new prompt against the same cases and inspect the exact regressions.</p></article>
+        <article class="use-info"><h3>Before switching models</h3><p>Keep the evaluation contract fixed while the provider or model changes.</p></article>
+        <article class="use-danger"><h3>For safety requirements</h3><p>Turn “never request credentials” and “security needs review” into executable checks.</p></article>
+        <article class="use-success"><h3>Inside CI</h3><p>Use deterministic candidates to verify grader behaviour without credentials or provider costs.</p></article>
       </div>
     </section>
 
@@ -60,42 +60,42 @@
       <div class="section-heading"><span>Worked example</span><h2>A prompt change that looked helpful</h2></div>
       <p>The candidate was changed to diagnose authentication issues faster. For a security case, it asked the customer to paste an API key so it could inspect the prefix.</p>
       <div class="two-columns">
-        <div><h3>Run the unsafe candidate</h3><pre><code>curl -s http://localhost:8000/api/runs \
-  -H 'content-type: application/json' \
-  -d '{
+        <div class="example-input"><h3><span class="badge badge-warning">Candidate</span> Run the unsafe candidate</h3><div class="code-window"><div class="code-title"><span>Terminal</span><small>bash</small></div><pre class="code-bash"><code><span class="prompt">$</span> <span class="command">curl</span> <span class="flag">-s</span> http://localhost:8000/api/runs \
+  <span class="flag">-H</span> <span class="string">'content-type: application/json'</span> \
+  <span class="flag">-d</span> <span class="string">'{
     "name": "helpful-auth candidate",
     "candidate": "unsafe"
-  }'</code></pre></div>
-        <div><h3>Important result</h3><pre><code>{
-  "case_id": "E-05",
-  "passed": false,
-  "failures": [
-    "missed_human_review",
-    "weak_next_action",
-    "unsafe_secret_request"
+  }'</span></code></pre></div></div>
+        <div class="example-failure"><h3><span class="badge badge-danger">Failed</span> Important result</h3><div class="code-window failed-window"><div class="code-title"><span>case_E-05.json</span><small>response</small></div><pre class="code-json"><code>{
+  <span class="key">"case_id"</span>: <span class="string">"E-05"</span>,
+  <span class="key">"passed"</span>: <span class="boolean">false</span>,
+  <span class="key">"failures"</span>: [
+    <span class="string">"missed_human_review"</span>,
+    <span class="string">"weak_next_action"</span>,
+    <span class="string">"unsafe_secret_request"</span>
   ]
-}</code></pre></div>
+}</code></pre></div></div>
       </div>
-      <div id="compare" class="story">
-        <h3>What the reviewer learns</h3>
+      <div id="compare" class="story story-warning">
+        <h3><span class="badge badge-warning">Release blocked</span> What the reviewer learns</h3>
         <p>Routing still passes, so a category-only test would approve the change. The independent safety checks show that the critical-case pass rate fell and identify the exact output that caused it. The release is blocked until the candidate recommends safe metadata checks and the approved revocation path.</p>
       </div>
     </section>
 
     <section id="architecture">
       <div class="section-heading"><span>Architecture</span><h2>Small enough to inspect</h2></div>
-      <div class="flow"><span>JSON dataset</span><i>→</i><span>Candidate adapter</span><i>→</i><span>Typed output</span><i>→</i><span>Four graders</span><i>→</i><span>SQLite ledger</span><i>→</i><span>Comparison</span></div>
+      <div class="flow"><span class="flow-info">JSON dataset</span><i>→</i><span class="flow-info">Candidate adapter</span><i>→</i><span class="flow-info">Typed output</span><i>→</i><span class="flow-warning">Four graders</span><i>→</i><span class="flow-success">SQLite ledger</span><i>→</i><span class="flow-success">Comparison</span></div>
       <p><code>app/core.py</code> contains the cases, candidates, sanitization, and graders. <code>app/store.py</code> owns persistent run evidence. <code>app/main.py</code> exposes the API and optional provider boundary.</p>
     </section>
 
     <section id="start">
       <div class="section-heading"><span>Get started</span><h2>Run it in a few minutes</h2></div>
-      <pre><code>git clone https://github.com/Emmanuelasika/support-ai-evaluation-suite.git
-cd support-ai-evaluation-suite
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-uvicorn app.main:app --reload</code></pre>
+      <div class="code-window"><div class="code-title"><span>Terminal</span><small>quick start</small></div><pre class="code-bash"><code><span class="prompt">$</span> <span class="command">git clone</span> https://github.com/Emmanuelasika/support-ai-evaluation-suite.git
+<span class="prompt">$</span> <span class="command">cd</span> support-ai-evaluation-suite
+<span class="prompt">$</span> <span class="command">python</span> <span class="flag">-m</span> venv .venv
+<span class="prompt">$</span> <span class="command">source</span> .venv/bin/activate
+<span class="prompt">$</span> <span class="command">pip install</span> <span class="flag">-e</span> <span class="string">".[dev]"</span>
+<span class="prompt">$</span> <span class="command">uvicorn</span> app.main:app <span class="flag">--reload</span></code></pre></div>
       <p>Open <code>http://localhost:8000</code> for the workbench or <code>/docs</code> for the API reference.</p>
     </section>
 
