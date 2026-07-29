@@ -1,4 +1,4 @@
-"""SQLite run history and comparison storage for EvalForge."""
+"""SQLite run history and comparison storage for support evaluations."""
 from __future__ import annotations
 
 import json

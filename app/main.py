@@ -1,4 +1,4 @@
-"""EvalForge API: evaluation runs, regression evidence, and comparisons."""
+"""AI support evaluation API: runs, regression evidence, and comparisons."""
 from __future__ import annotations
 
 import os
@@ -34,7 +34,7 @@ DATASET = Path(
 )
 DATABASE = Path(os.getenv("EVALFORGE_DATABASE", str(ROOT / "evalforge.sqlite3")))
 store = RunStore(DATABASE)
-app = FastAPI(title="EvalForge", version="2.0.0")
+app = FastAPI(title="AI Support Evaluation Suite", version="2.0.0")
 
 
 class RunRequest(BaseModel):

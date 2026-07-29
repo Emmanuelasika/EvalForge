@@ -1,6 +1,6 @@
 # Architecture
 
-EvalForge separates evaluation contracts, provider behavior, grading, and run
+The AI Support Evaluation Suite separates evaluation contracts, provider behavior, grading, and run
 storage so each can change without hiding the evidence used for release
 decisions.
 

@@ -29,13 +29,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Build container
-        run: docker build --tag evalforge:ci .
+        run: docker build --tag support-ai-evaluation-suite:ci .
       - name: Smoke-test container
         run: |
-          docker run --detach --name evalforge-ci --publish 8000:8000 evalforge:ci
+          docker run --detach --name support-ai-evaluation-suite-ci --publish 8000:8000 support-ai-evaluation-suite:ci
           for attempt in {1..15}; do
             curl --fail http://127.0.0.1:8000/health && exit 0
             sleep 1
           done
-          docker logs evalforge-ci
+          docker logs support-ai-evaluation-suite-ci
           exit 1
